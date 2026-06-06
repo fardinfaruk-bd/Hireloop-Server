@@ -61,6 +61,15 @@ async function run() {
       const result = await companyCollection.insertOne(company);
       res.send(result);
     })
+
+    app.get("/api/my/companies", async (req, res) => {
+      const query = {};
+      if (req.query.recruiterId) {
+          query.recruiterId = req.query.recruiterId;
+      }
+      const results = await companyCollection.findOne(query);
+      res.send(results);
+    });
     
 
 
