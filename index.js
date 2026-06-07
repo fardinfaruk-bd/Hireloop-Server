@@ -33,11 +33,23 @@ async function run() {
     const database = client.db("hireloop_db");
     const jobCollection = database.collection("jobs");
     const companyCollection = database.collection("companies");
+    const usersCollection = database.collection("user");
+
+
+    app.get("/api/users", async (req, res) => {
+      const cursor =usersCollection.find().skip(2);
+      const results = await cursor.toArray();
+      res.send(results);
+    })
 
 
     app.post("/api/jobs", async (req, res) => {
       const job = req.body;
-      const result = await jobCollection.insertOne(job);
+      const newJob = {
+        ...job,
+        createAt: new Date()
+      } 
+      const result = await jobCollection.insertOne(newJob);
       res.send(result);
     })
 
@@ -58,6 +70,10 @@ async function run() {
     //company related apis
     app.post("/api/companies", async (req, res) => {
       const company = req.body;
+      const newCompany = {
+        ...company,
+        createAt: new Date()
+      }
       const result = await companyCollection.insertOne(company);
       res.send(result);
     })
@@ -68,8 +84,16 @@ async function run() {
           query.recruiterId = req.query.recruiterId;
       }
       const results = await companyCollection.findOne(query);
+      console.log("my Company", results);
+      res.send(results || {});
+    });
+
+    app.get("/api/companies", async (req, res) => {
+      const cursor = companyCollection.find().skip(4);
+      const results = await cursor.toArray();
       res.send(results);
     });
+
     
 
 
