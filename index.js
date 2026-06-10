@@ -35,6 +35,7 @@ async function run() {
     const companyCollection = database.collection("companies");
     const usersCollection = database.collection("user");
     const applicationCollection = database.collection("applications");
+    const planCollection = database.collection("plans");
 
 
     app.get("/api/users", async (req, res) => {
@@ -125,6 +126,17 @@ async function run() {
     app.get("/api/companies", async (req, res) => {
       const cursor = companyCollection.find().skip(4);
       const results = await cursor.toArray();
+      res.send(results);
+    });
+
+
+    //plans related apis
+    app.get("/api/plans", async (req, res) => {
+      const query = {};
+      if (req.query.plan_id) {
+          query.id = req.query.plan_id;
+      }
+      const results = await planCollection.findOne(query);
       res.send(results);
     });
 
