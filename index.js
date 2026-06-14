@@ -36,6 +36,7 @@ async function run() {
     const usersCollection = database.collection("user");
     const applicationCollection = database.collection("applications");
     const planCollection = database.collection("plans");
+    const subscriptionCollection = database.collection("subscriptions");
 
 
     app.get("/api/users", async (req, res) => {
@@ -140,6 +141,26 @@ async function run() {
       res.send(results);
     });
 
+
+    //subscriptions related apis
+    app.post("/api/subscriptions", async (req, res) => {
+      const subscription = req.body;
+      const newSubscription = {
+        ...subscription,
+        createAt: new Date()
+      }
+      const result = await subscriptionCollection.insertOne(newSubscription);
+
+      //update the user plan information
+      const filter = { email: subscription.email };
+      const updateDoc = {
+        $set: {
+          plan: subscription.planId
+        }
+      };
+      const updatedPlan = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
     
 
 
