@@ -21,6 +21,15 @@ const logger = (req, res, next) => {
 };
 const verifyToken = (req, res, next) => {
   console.log("headers", req.headers);
+  const authHeader = req.headers?.authorization;
+  if(!authHeader){
+    return res.status(401).send({ message: "unauthorized access"});
+  }
+
+  const token = authHeader.split(" ")[1];
+  if(!token){
+    return res.status(401).send({ message: "unauthorized access"});
+  }
   next();
 }
 
@@ -125,7 +134,7 @@ async function run() {
     //   }
     //   res.send(companies);
     // });
-    app.get("/api/companies", async (req, res) => {
+    app.get("/api/companies",verifyToken, async (req, res) => {
       const companies = await companyCollection
         .aggregate([
           {
