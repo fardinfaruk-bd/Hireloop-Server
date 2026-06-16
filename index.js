@@ -14,6 +14,16 @@ app.get("/", (req, res) => {
 
 const uri = process.env.MONGO_DB_URI;
 
+
+const logger = (req, res, next) => {
+  console.log("logger middleware", req.params);
+  next();
+};
+const verifyToken = (req, res, next) => {
+  console.log("headers", req.headers);
+  next();
+}
+
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -199,7 +209,7 @@ async function run() {
       res.send(results || {});
     });
 
-    app.patch("/api/companies/:id", async (req, res) => {
+    app.patch("/api/companies/:id",logger, verifyToken, async (req, res) => {
       const id = req.params.id;
       const updatedCompany = req.body;
       const filter = { _id: new ObjectId(id) };
