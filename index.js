@@ -14,24 +14,10 @@ app.get("/", (req, res) => {
 
 const uri = process.env.MONGO_DB_URI;
 
-
 const logger = (req, res, next) => {
   console.log("logger middleware", req.params);
   next();
 };
-const verifyToken = (req, res, next) => {
-  console.log("headers", req.headers);
-  const authHeader = req.headers?.authorization;
-  if(!authHeader){
-    return res.status(401).send({ message: "unauthorized access"});
-  }
-
-  const token = authHeader.split(" ")[1];
-  if(!token){
-    return res.status(401).send({ message: "unauthorized access"});
-  }
-  next();
-}
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -54,6 +40,38 @@ async function run() {
     const applicationCollection = database.collection("applications");
     const planCollection = database.collection("plans");
     const subscriptionCollection = database.collection("subscriptions");
+    const sessionCollection = database.collection("session");
+
+    //Verification Related
+    const verifyToken = async(req, res, next) => {
+      const authHeader = req.headers?.authorization;
+      if (!authHeader) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+
+      const token = authHeader.split(" ")[1];
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      const query = {token: token};
+      const session = await sessionCollection.findOne(query);
+      const userId = session?.userId;
+
+      const userQuery = {_id: userId};
+      const user = await usersCollection.findOne(userQuery);
+      console.log("User is", user);
+
+      req.user = user;
+      next();
+    };
+    const verifySeeker = async(req, res, next) => {
+      const user = req.user;
+      if (user?.role === "seeker") {
+        next();
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    }
 
     app.get("/api/users", async (req, res) => {
       const cursor = usersCollection.find().skip(2);
@@ -93,10 +111,12 @@ async function run() {
     });
 
     //application related api
-    app.get("/api/applications", async (req, res) => {
+    app.get("/api/applications",verifyToken,verifySeeker, async (req, res) => {
       const query = {};
       if (req.query.applicantId) {
         query.applicantId = req.query.applicantId;
+        //Check whether asking for user information or someone else
+        console.log("Query is", req.user, req.query.applicantId);  
       }
       if (req.query.jobId) {
         query.jobId = req.query.jobId;
@@ -134,7 +154,7 @@ async function run() {
     //   }
     //   res.send(companies);
     // });
-    app.get("/api/companies",verifyToken, async (req, res) => {
+    app.get("/api/companies", verifyToken, async (req, res) => {
       const companies = await companyCollection
         .aggregate([
           {
@@ -218,7 +238,7 @@ async function run() {
       res.send(results || {});
     });
 
-    app.patch("/api/companies/:id",logger, verifyToken, async (req, res) => {
+    app.patch("/api/companies/:id", logger, verifyToken, async (req, res) => {
       const id = req.params.id;
       const updatedCompany = req.body;
       const filter = { _id: new ObjectId(id) };
