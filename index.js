@@ -55,15 +55,22 @@ async function run() {
       }
       const query = {token: token};
       const session = await sessionCollection.findOne(query);
+      if(!session){
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+
+
       const userId = session?.userId;
 
       const userQuery = {_id: userId};
       const user = await usersCollection.findOne(userQuery);
-      console.log("User is", user);
-
+      if(!user){
+        return res.status(401).send({ message: "unauthorized access" });
+      }
       req.user = user;
       next();
     };
+    // must be used after verifyToken middleware
     const verifySeeker = async(req, res, next) => {
       const user = req.user;
       if (user?.role === "seeker") {
@@ -72,6 +79,25 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       }
     }
+    const verifyAdmin = async(req, res, next) => {
+      const user = req.user;
+      if (user?.role === "admin") {
+        next();
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    }
+    const verifyRecruiter = async(req, res, next) => {
+      const user = req.user;
+      if (user?.role === "recruiter") {
+        next();
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    }
+
+
+
 
     app.get("/api/users", async (req, res) => {
       const cursor = usersCollection.find().skip(2);
@@ -116,7 +142,10 @@ async function run() {
       if (req.query.applicantId) {
         query.applicantId = req.query.applicantId;
         //Check whether asking for user information or someone else
-        console.log("Query is", req.user, req.query.applicantId);  
+        console.log("Query is", req.user, req.query.applicantId); 
+        if (req.user._id.toString() !== req.query.applicantId) {
+          return res.status(403).send({ message: "forbidden access" });
+        } 
       }
       if (req.query.jobId) {
         query.jobId = req.query.jobId;
@@ -154,7 +183,7 @@ async function run() {
     //   }
     //   res.send(companies);
     // });
-    app.get("/api/companies", verifyToken, async (req, res) => {
+    app.get("/api/companies", verifyToken,verifyAdmin, async (req, res) => {
       const companies = await companyCollection
         .aggregate([
           {
@@ -238,7 +267,7 @@ async function run() {
       res.send(results || {});
     });
 
-    app.patch("/api/companies/:id", logger, verifyToken, async (req, res) => {
+    app.patch("/api/companies/:id", logger, verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const updatedCompany = req.body;
       const filter = { _id: new ObjectId(id) };
